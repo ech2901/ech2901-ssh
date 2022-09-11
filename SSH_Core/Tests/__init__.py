@@ -7,6 +7,47 @@ class TestDatatypes(unittest.TestSuite):
 
 
 class TestByte(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.test_data = list()
+        for i in range(100):
+            self.test_data.append(random.randbytes(i))
+
+        self.test_instances = list()
+        for index, data in enumerate(self.test_data):
+            with self.subTest(f'{index}: {data}'):
+                self.test_instances.append(SSH_Core.Byte(data))
+
+    def test_data_integrity(self):
+        for index, data in enumerate(self.test_data):
+            with self.subTest(f'{index}: {data}'):
+                self.assertEqual(self.test_instances[index].data, data)
+
+    def test_decode(self):
+        for index, data in enumerate(self.test_data):
+            with self.subTest(f'{index}: {data}'):
+                self.assertEqual(
+                    self.test_instances[index].data,
+                    SSH_Core.Byte.decode(data).data
+                )
+
+    def test_encode(self):
+        for index, data in enumerate(self.test_data):
+            with self.subTest(f'{index}: {data}'):
+                self.assertEqual(self.test_instances[index].encode(), data)
+
+    def test_equivalence_encodeing(self):
+        for index, inst in enumerate(self.test_instances):
+            with self.subTest(f'{index}: {inst.data}'):
+                test_inst = SSH_Core.Byte.decode(inst.encode())
+                self.assertEqual(test_inst.data, inst.data)
+
+    def test_equivalence_decoding(self):
+        for index, data in enumerate(self.test_data):
+            with self.subTest(f'{index}: {data}'):
+                test_inst = SSH_Core.Byte.decode(data)
+                self.assertEqual(test_inst.encode(), data)
 
 
 
@@ -70,5 +111,6 @@ class TestBoolean(unittest.TestCase):
 if __name__ == '__main__':
     datatypes = TestDatatypes()
     datatypes.addTest(TestBoolean)
+    datatypes.addTest(TestByte)
 
     datatypes.run()
