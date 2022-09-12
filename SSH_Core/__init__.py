@@ -1,9 +1,7 @@
-from struct import pack, unpack
+from struct import pack, unpack, error
 
 
 class Datatype(object):
-    def __init__(self, data):
-        self.data = data
 
     def __len__(self):
         return len(self.data)
@@ -24,6 +22,12 @@ class Datatype(object):
 
 
 class Byte(Datatype):
+    def __init__(self, data: bytes):
+        if type(data) is bytes:
+            self.data = data
+        else:
+            raise ValueError
+
     @classmethod
     def decode(cls, data):
         byte_data = unpack(f'!{len(data)}s', data)
@@ -34,21 +38,37 @@ class Byte(Datatype):
 
 
 class Boolean(Datatype):
+    def __init__(self, data: bool):
+        if type(data) is bool:
+            self.data = data
+        else:
+            raise ValueError
+
     @classmethod
     def decode(cls, data):
         bool_data = unpack('!?', data)
         return cls(*bool_data)
 
     def encode(self):
-        if self.data:
-            return b'\x01'
-        return b'\x00'
+        if type(self.data) is bool:
+            return pack('!?', self.data)
+        raise error
 
     def __len__(self):
         return 1
 
 
 class UInt32(Datatype):
+    def __init__(self, data: int):
+        if type(data) is int:
+            if data < 0:
+                raise ValueError(f'Less than 0: {data}')
+            if data.bit_length() > 32:
+                raise ValueError(f'More than 32 bits: {data} Bits: {data.bit_length()}')
+            self.data = data
+        else:
+            raise ValueError(f'Not an int: {data} Type: {type(data)}')
+
     @classmethod
     def decode(cls, data):
         uint_data = unpack('!I', data)
@@ -62,6 +82,16 @@ class UInt32(Datatype):
 
 
 class UInt64(Datatype):
+    def __init__(self, data: int):
+        if type(data) is int:
+            if data < 0:
+                raise ValueError
+            if data.bit_length() > 64:
+                raise ValueError
+            self.data = data
+        else:
+            raise ValueError
+
     @classmethod
     def decode(cls, data):
         uint_data = unpack('!Q', data)
@@ -75,6 +105,12 @@ class UInt64(Datatype):
 
 
 class String(Datatype):
+    def __init__(self, data: bytes):
+        if type(data) is bytes:
+            self.data = data.decode()
+        else:
+            raise ValueError
+
     @classmethod
     def decode(cls, data):
         size = unpack('!I', data[:4])
@@ -82,35 +118,49 @@ class String(Datatype):
         return cls(*string_data)
 
     def encode(self):
-        return pack(f'!I{len(self)}s', len(self), self.data)
+        return pack(f'!I{len(self)}s', len(self), self.data.encode())
 
     def __len__(self):
         return 4+len(self.data)
 
 
 class MPInt(Datatype):
+    def __init__(self, size: int, data: int):
+        UInt32(size)  # Same tests needed, so initialize only to test
+        self.size = size
+        if ((data.bit_length() + 7) // 8) == size:
+            self.data = data
+        else:
+            raise ValueError
+
     @classmethod
     def decode(cls, data):
-        size = unpack('!I', data[:4])
-        str_data = unpack(f'!{size}s', data[4:])
-        mpint_data = int.from_bytes(*str_data, 'big', True)
-        return cls((size, mpint_data))
+        size, _ = unpack('!I', data[:4])
+        str_data, _ = unpack(f'!{size}s', data[4:])
+        mpint_data = int.from_bytes(str_data, 'big', True)
+        return cls(size, mpint_data)
 
     def encode(self):
-        size, mpint_data = self.data
-        return pack(f'I{size}s', size, mpint_data.to_bytes(size, 'big', True))
+        return pack(f'I{self.size}s', self.size, self.data.to_bytes(self.size, 'big', True))
 
     def __len__(self):
-        return 4+self.data[0]
+        return 4+self.size
 
 
 class NameList(Datatype):
+    def __init__(self, size: int, data: list):
+        UInt32(size)
+        if isinstance(data, list):
+            self.data = data
+        else:
+            raise ValueError
+
     @classmethod
     def decode(cls, data):
-        size = unpack('!I', data[:4])
+        size, _ = unpack('!I', data[:4])
         packed_list_data = unpack(f'!{size}s', data[4:])
         unpacked_list_data = packed_list_data[0].split(b',', -1)
-        return cls((size, unpacked_list_data))
+        return cls(size, unpacked_list_data)
 
     def encode(self):
         size, unpacked_list_data = self.data
