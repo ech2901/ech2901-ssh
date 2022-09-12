@@ -142,7 +142,6 @@ class MPInt(Datatype):
         )
 
 
-
 class NameList(Datatype):
     def __init__(self, *data, size: int=None):
         for index, str_data in enumerate(data):
@@ -156,7 +155,8 @@ class NameList(Datatype):
             if size.bit_length() > 32:
                 raise ValueError(f'size is more than 32 bits, is {size.bit_length()} bits')
             self.data_size = size
-
+        elif type(size) is not None:
+            raise TypeError(f'size is not None or int, is {type(size)}')
         else:
             self.data_size = len(','.join(self.data))
 
