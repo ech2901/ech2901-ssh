@@ -30,14 +30,15 @@ class Datatype(object):
         Return hex representation of the data in a string
         :return: string representation of the data (IE: 0xDEADBEEF)
         """
-        return f'0x{int.from_bytes(self.encode(), "big"):0{len(self)}X}'
+        data = self.encode()
+        return f'0x{int.from_bytes(data, "big"):0{len(data)}X}'
 
     def __repr__(self) -> str:
         """
         Return a string representation of the data
         :return: "Dataclass(data=self.data, len=self.size)"
         """
-        out = f'{self.__class__.__name__}({self.data=}, {self.size=})'
+        out = f'{self.__class__.__name__}(data={self.data})'
         return out
 
 
