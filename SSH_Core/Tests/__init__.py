@@ -1,295 +1,516 @@
+import collections
 import unittest
 import SSH_Core
 import random
 
-import struct
+from struct import error as StructError, pack
+from string import printable
 
 random_tests_count = 100
 
 
-class TestByte(unittest.TestCase):
-    def __init__(self, methodName: str):
-        super().__init__(methodName)
+class Byte(unittest.TestCase):
+    bad_data = (True, False, None, 'test', 100, 0.03, float('inf'), list(), dict(), object)
 
-        self.test_data = list()
-        for i in range(random_tests_count):
-            self.test_data.append(random.randbytes(i))
-
-    def init_instances(self):
-        self.test_instances = list()
-        for index, data in enumerate(self.test_data):
-            with self.subTest(f'{index}: {data}'):
-                self.test_instances.append(SSH_Core.Byte(data))
-
-    def test_instance_all_fail(self):
-        test_types = [
-            int,
-            bool,
-            str,
-            bytearray,
-            list,
-            tuple,
-            dict
-        ]
-
-        for test_type in test_types:
-            with self.subTest(test_type.__name__):
-                self.assertRaises(ValueError, SSH_Core.Byte, test_type())
-
-    def test_data_integrity(self):
-        self.init_instances()
-        for index, data in enumerate(self.test_data):
-            with self.subTest(f'{index}: {data}'):
-                self.assertEqual(self.test_instances[index].data, data)
-
-    def test_decode(self):
-        self.init_instances()
-        for index, data in enumerate(self.test_data):
-            with self.subTest(f'{index}: {data}'):
-                self.assertEqual(
-                    self.test_instances[index].data,
-                    SSH_Core.Byte.decode(data).data
-                )
-
-    def test_encode_all_pass(self):
-        """Test if encoding expected data succeeds"""
-        self.init_instances()
-        for index, data in enumerate(self.test_data):
-            with self.subTest(f'{index}: {data}'):
-                self.assertEqual(self.test_instances[index].encode(), data)
-
-    def test_encode_all_fail(self):
-        """Test if encoding unexpected data raises an error"""
-        self.init_instances()
-        for index, data in enumerate(self.test_data):
-            with self.subTest(f'{index}: {data}'):
-
-                self.assertEqual(self.test_instances[index].encode(), data)
-
-    def test_equivalence_encodeing(self):
-        """Test if decoding data from another instances encode """\
-            """returns epected data"""
-        self.init_instances()
-        for index, inst in enumerate(self.test_instances):
-            with self.subTest(f'{index}: {inst.data}'):
-                test_inst = SSH_Core.Byte.decode(inst.encode())
-                self.assertEqual(test_inst.data, inst.data)
-
-    def test_equivalence_decoding(self):
-        """Test if encoding data from another instances decoded data """\
-            """returns expected data"""
-        for index, data in enumerate(self.test_data):
-            with self.subTest(f'{index}: {data}'):
-                test_inst = SSH_Core.Byte.decode(data)
-                self.assertEqual(test_inst.encode(), data)
-
-
-class TestBoolean(unittest.TestCase):
-
-    def test_instances_all_fail(self):
-        """Test if passing invalid data to initializing function """\
-            """causes an expected error"""
-        test_types = [
-            int,
-            str,
-            bytes,
-            bytearray,
-            list,
-            tuple,
-            dict
-        ]
-
-        for test_type in test_types:
-            with self.subTest(test_type.__name__):
-                self.assertRaises(ValueError, SSH_Core.Boolean, test_type())
-
+    @property
     def test_data(self):
-        """Test if passing vvalid data to initializing """\
-            """method creates valid instances that we expect"""
-        bool_inst1 = SSH_Core.Boolean(True)
-        bool_inst2 = SSH_Core.Boolean(False)
+        for _ in range(random_tests_count):
+            yield random.randbytes(random.randint(0, 30))
 
-        with self.subTest(True):
-            self.assertTrue(bool_inst1.data)
-            self.assertIsNotNone(bool_inst1.data)
-            self.assertIsInstance(bool_inst1.data, bool)
-
-        with self.subTest(False):
-            self.assertFalse(bool_inst2.data)
-            self.assertIsNotNone(bool_inst2.data)
-            self.assertIsInstance(bool_inst2.data, bool)
-
-    def test_decode_pass(self):
-        """Test if passing valid data to decode classmethod """\
-            """creates valid instances"""
-        test_data = [
-            (b'\x00', False),
-            (b'\x01', True),
-            (b't', True),
-            (b' ', True)
-        ]
-
-        for testcase, passcase in test_data:
-            with self.subTest(testcase):
-                test_bool = SSH_Core.Boolean.decode(testcase)
-                self.assertEqual(test_bool.data, passcase, test_bool.data)
-
-    def test_decode_fail(self):
-        """Test passing data with too many or too few bytes causes """\
-            """an error to raise"""
-        test_data = [
-            b'',
-            b'\x00\x00',
-            b'\x00\x01',
-            b'\x01\x00',
-            b'\x01\x01'
-        ]
-        for test in test_data:
-            with self.subTest(test):
-                self.assertRaises(struct.error, SSH_Core.Boolean.decode, test)
-
-    def test_encode_all_pass(self):
-        """Test if encoding a bool returns an expected """\
-            """bytes value"""
-        test_data = [
-            (True, b'\01'),
-            (False, b'\00')
-        ]
-
-        for testcase, passcase in test_data:
-            with self.subTest(testcase):
-                test_bool = SSH_Core.Boolean(testcase)
-                self.assertEqual(test_bool.encode(), passcase)
-
-    def test_encode_all_fail(self):
-        """Test if trying to encode bad data returns """\
-            """unexpected output instead of raising an error"""
-        for data in (None, int(), tuple(), list(), dict(), str(), bytes()):
-            test_inst = SSH_Core.Boolean(True)
+    def testInstances(self):
+        for data in self.test_data:
             with self.subTest(data):
-                test_inst.data = data
-                self.assertRaises(struct.error, test_inst.encode)
+                SSH_Core.Byte(data)
 
-    def test_equivalence_encoding(self):
-        """Test if decoding the output from another instances """\
-            """encode method creates returns expected data"""
-        test_data = [True, False]
-        for testcase in test_data:
-            with self.subTest(testcase):
-                bool_inst1 = SSH_Core.Boolean(testcase)
-                bool_inst2 = SSH_Core.Boolean.decode(bool_inst1.encode())
-                self.assertEqual(bool_inst2.data, bool_inst1.data)
+    def testDecode(self):
+        for data in self.test_data:
+            with self.subTest(f'decode: {data}'):
+                try:
+                    inst = SSH_Core.Byte.decode(data)
+                    with self.subTest(f'check data integrity: {data}'):
+                        self.assertEqual(inst.data, data)
+                except:
+                    self.fail(data)
 
-    def test_equivalence_decoding(self):
-        """Test if encoding the data from another instances """\
-            """decoded data returns expected data"""
-        test_data = [
-            b'\x00',
-            b'\x01',
-            b't',
-            b' '
-        ]
+    def testEncode(self):
+        for data in self.test_data:
+            inst = SSH_Core.Byte(data)
+            with self.subTest(f'encode from: {inst.data}'):
+                self.assertEqual(data, inst.encode())
 
-        for testcase in test_data:
-            with self.subTest(testcase):
-                bool_inst1 = SSH_Core.Boolean.decode(testcase)
-                bool_inst2 = SSH_Core.Boolean.decode(bool_inst1.encode())
-                self.assertEqual(bool_inst2.data, bool_inst1.data)
+    def testDecodeEncode(self):
+        for data in self.test_data:
+            inst = SSH_Core.Byte.decode(data)
+            with self.subTest(f'Test decode then encode: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for data in self.test_data:
+            inst1 = SSH_Core.Byte(data)
+            inst2 = SSH_Core.Byte.decode(inst1.encode())
+            with self.subTest(f'Test encode then decode: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Expect fail: attempt to instance {data}'):
+                self.assertRaises(TypeError, SSH_Core.Byte, data)
+
+    def testDecodeFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Expect fail: attempt to decode {data}'):
+                self.assertRaises(TypeError, SSH_Core.Byte.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.Byte(b'')
+            inst.data = data
+            with self.subTest(f'Expect fail: instance data set to {data}'):
+                self.assertRaises(StructError, inst.encode)
 
 
-class TestUInt32(unittest.TestCase):
-    int_max = (1 << 32)-1
+class Boolean(unittest.TestCase):
+    bad_data = (None, 1, 0, -1, 0.5, 'test', b'test2', list, dict())
+    test_data = [val.to_bytes(1, 'big') for val in range(256)]
 
-    def test_instance_all_pass(self):
-        """Test creating valid instances that we expect"""
+    def testInstances(self):
+        for data in (True, False):
+            with self.subTest(data):
+                SSH_Core.Boolean(data)
+
+    def testDecode(self):
+        for data in self.test_data:
+            with self.subTest(f'Test decode: {data}'):
+                try:
+                    inst = SSH_Core.Boolean.decode(data)
+                    with self.subTest(f'Test truth: {data}'):
+                        if data == b'\x00':
+                            self.assertFalse(inst.data)
+                        else:
+                            self.assertTrue(inst.data)
+                except:
+                    self.fail(data)
+
+    def testEncode(self):
+        for data in (True, False):
+            inst = SSH_Core.Boolean(data)
+            with self.subTest(f'Encoding: {data}'):
+                if data:
+                    self.assertEqual(inst.encode(), b'\x01')
+                else:
+                    self.assertEqual(inst.encode(), b'\x00')
+
+    def testDecodeEncode(self):
+        for data in self.test_data:
+            inst = SSH_Core.Boolean.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                if data == b'\x00':
+                    self.assertEqual(inst.encode(), b'\x00')
+                else:
+                    self.assertEqual(inst.encode(), b'\x01')
+
+    def testEncodeDecode(self):
+        for data in (True, False):
+            inst1 = SSH_Core.Boolean(data)
+            inst2 = SSH_Core.Boolean.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.Boolean, data)
+
+    def testDecodeFail(self):
+        for data in (b'', b'\x01\x00', b'test', *self.bad_data):
+            with self.subTest(f'Fail decode with: {data}'):
+                if type(data) is bytes:
+                    self.assertRaises(StructError, SSH_Core.Boolean.decode, data)
+                else:
+                    self.assertRaises(TypeError, SSH_Core.Boolean.decode, data)
+
+    def testEncodeFail(self):
+        for data in (b'', b'\x01\x00', b'test', *self.bad_data):
+            inst = SSH_Core.Boolean(True)
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
+
+
+class UInt32(unittest.TestCase):
+    bad_data = (1<<33, -1, 0.5, True, False, None, object, list(), dict(), b'', b'1', 'test')
+
+    @property
+    def test_data(self):
         for _ in range(random_tests_count):
-            test_val = random.randint(0, self.int_max)
-            with self.subTest(test_val):
-                SSH_Core.UInt32(test_val)
+            data = random.randbytes(4)
+            yield data, int.from_bytes(data, 'big')
 
-    def test_instances_all_fail1(self):
-        """Test if passing invalid data to initializing function """ \
-            """causes an expected error"""
-        test_types = [
-            bool,
-            str,
-            bytes,
-            bytearray,
-            list,
-            tuple,
-            dict
-        ]
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.UInt32(data)
 
-        for test_type in test_types:
-            with self.subTest(test_type.__name__):
-                self.assertRaises(ValueError, SSH_Core.UInt32, test_type())
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            try:
+                inst = SSH_Core.UInt32.decode(data)
+                with self.subTest(f'Decode: {data}'):
+                    self.assertEqual(inst.data, test_val)
+            except:
+                self.fail(data)
 
-    def test_instance_all_fail2(self):
-        """Test creating invalid instances with bad data"""
+    def testEncode(self):
+        for test_val, data in self.test_data:
+            inst = SSH_Core.UInt32(data)
+            with self.subTest(f'Encode: {data}'):
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.UInt32.decode(data)
+            with self.subTest(f'Decoding than encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.UInt32(data)
+            inst2 = SSH_Core.UInt32.decode(inst1.encode())
+            with self.subTest(f'Encoding than decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                if type(data) is int and (data < 0 or data.bit_length() > 32):
+                    self.assertRaises(ValueError, SSH_Core.UInt32, data)
+                else:
+                    self.assertRaises(TypeError, SSH_Core.UInt32, data)
+
+    def testDecodeFail(self):
+        for data in (b'', b'asd', b'asdfg', *self.bad_data):
+            with self.subTest(f'Fail decode with: {data}'):
+                if type(data) is bytes:
+                    self.assertRaises(StructError, SSH_Core.UInt32.decode, data)
+                else:
+                    self.assertRaises(TypeError, SSH_Core.UInt32.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.UInt32(0)
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
+
+
+class UInt64(unittest.TestCase):
+    bad_data = (1<<65, -1, 0.5, True, False, None, object, list(), dict(), b'', b'1', 'test')
+
+    @property
+    def test_data(self):
         for _ in range(random_tests_count):
-            test_val_pos = random.randint(0, self.int_max)+self.int_max
-            test_val_neg = -random.randint(1, self.int_max)
+            data = random.randbytes(8)
+            yield data, int.from_bytes(data, 'big')
 
-            with self.subTest(test_val_pos):
-                self.assertRaises(ValueError, SSH_Core.UInt32, test_val_pos)
-            with self.subTest(test_val_neg):
-                self.assertRaises(ValueError, SSH_Core.UInt32, test_val_neg)
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.UInt64(data)
 
-    def test_decode_all_pass(self):
-        """Test if decoding data returns expected values"""
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            try:
+                inst = SSH_Core.UInt64.decode(data)
+                with self.subTest(f'Decode: {data}'):
+                    self.assertEqual(inst.data, test_val)
+            except:
+                self.fail(data)
+
+    def testEncode(self):
+        for test_val, data in self.test_data:
+            inst = SSH_Core.UInt64(data)
+            with self.subTest(f'Encode: {data}'):
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.UInt64.decode(data)
+            with self.subTest(f'Decoding than encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.UInt64(data)
+            inst2 = SSH_Core.UInt64.decode(inst1.encode())
+            with self.subTest(f'Encoding than decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                if type(data) is int and (data < 0 or data.bit_length() > 32):
+                    self.assertRaises(ValueError, SSH_Core.UInt64, data)
+                else:
+                    self.assertRaises(TypeError, SSH_Core.UInt64, data)
+
+    def testDecodeFail(self):
+        for data in (b'', b'asd', b'asdffauyg', *self.bad_data):
+            with self.subTest(f'Fail decode with: {data}'):
+                if type(data) is bytes:
+                    self.assertRaises(StructError, SSH_Core.UInt64.decode, data)
+                else:
+                    self.assertRaises(TypeError, SSH_Core.UInt64.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.UInt64(0)
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
+
+
+class String(unittest.TestCase):
+    bad_data = (-1, 0, 1, b'test', True, False, None, list(), dict(), object)
+
+    @property
+    def corrupt_data(self):
         for _ in range(random_tests_count):
-            test_int = random.randint(0, self.int_max)
-            test_data = test_int.to_bytes(4, 'big')
-            with self.subTest(f'{test_int}: {test_data}'):
-                test_inst = SSH_Core.UInt32.decode(test_data)
-                self.assertEqual(test_inst.data, test_int)
+            size = random.randint(1, 256)
+            data = ''.join(random.sample(3*printable, size))
+            yield pack(f'!I{size}s', size+1, data.encode())
+            yield pack(f'!I{size}s', size-1, data.encode())
 
-    def test_decode_all_fail(self):
-        """Test if decoding invalid data raises an error"""
+    @property
+    def test_data(self):
         for _ in range(random_tests_count):
-            test_int1 = random.randint(0, self.int_max)
-            test_data1 = test_int1.to_bytes(4+random.randint(1, 8), 'big')
+            size = random.randint(0, 256)
+            data = ''.join(random.sample(3*printable, size))
+            byte_data = pack(f'!I{size}s', size, data.encode())
+            yield byte_data, data
 
-            with self.subTest(f'{test_int1}: {test_data1}'):
-                self.assertRaises(struct.error, SSH_Core.UInt32.decode, test_data1)
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.String(data)
 
-    def test_enocode_all_pass(self):
-        """Test if encoding data returns expected value"""
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            with self.subTest(f'Decoding: {data}'):
+                inst = SSH_Core.String.decode(data)
+                self.assertEqual(inst.data, test_val)
+
+    def testEncode(self):
+        for test_val, data, in self.test_data:
+            with self.subTest(f'Encoding: {data}'):
+                inst = SSH_Core.String(data)
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.String.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.String(data)
+            inst2 = SSH_Core.String.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.String, data)
+
+    def testDecodeFail(self):
+        for data in self.corrupt_data:
+            with self.subTest(f'Fail decode with: {data}'):
+                self.assertRaises(StructError, SSH_Core.String.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.String('')
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
+
+
+class MPInt(unittest.TestCase):
+    bad_data = (True, False, None, 0.5, 'test', b'test2', b'', b'3', tuple(), object)
+
+    @property
+    def pos_test_data(self):
         for _ in range(random_tests_count):
-            test_data = random.randint(0, self.int_max)
-            test_inst = SSH_Core.UInt32(test_data)
-            with self.subTest(f'{test_data}'):
-                test_bytes = test_inst.encode()
-                self.assertEqual(int.from_bytes(test_bytes, 'big'), test_data)
+            data = random.randint(0, 10_000)
 
-    def test_encode_all_fail(self):
-        """Test if trying to encode invalid data raises an error"""
+            if data >= 0 and data.bit_length() % 8 == 0:
+                size = 1+(data.bit_length()+7)//8
+            else:
+                size = (data.bit_length()+7)//8
+
+            byte_data = data.to_bytes(size, 'big', signed=True)
+
+            yield pack(f'!I{size}s', size, byte_data), data
+
+    @property
+    def neg_test_data(self):
         for _ in range(random_tests_count):
-            test_data = random.randint(0, self.int_max)
-            test_inst = SSH_Core.UInt32(test_data)
-            test_inst.data = test_data + self.int_max
-            with self.subTest(f'{test_inst.data}'):
-                self.assertRaises(struct.error, test_inst.encode)
+            data = -random.randint(1, 10_000)
 
-    def test_equivalence_encoding(self):
-        """Test if decoding data from another instances encode function """\
-            """doesn't malform the data"""
+            if data.bit_length() % 8 == 0:
+                size = 1+(data.bit_length()+7)//8
+            else:
+                size = (data.bit_length()+7)//8
+
+            byte_data = data.to_bytes(size, 'big', signed=True)
+
+            yield pack(f'!I{size}s', size, byte_data), data
+
+    @property
+    def test_data(self):
+        for byte_data, data in self.pos_test_data:
+            yield byte_data, data
+        for byte_data, data in self.neg_test_data:
+            yield byte_data, data
+
+    @property
+    def corrupt_data(self):
+        for byte_data, _ in self.test_data:
+            yield byte_data[random.randint(1, 4):]
+        for byte_data, _ in self.test_data:
+            size = int.from_bytes(byte_data[:4], 'big')
+            yield (size+1).to_bytes(4, 'big') + byte_data[4:]
+            yield (size-1).to_bytes(4, 'big') + byte_data[4:]
+
+        for byte_data, _ in self.test_data:
+            yield byte_data[:4] + b'\x00' + byte_data[4:]
+
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.MPInt(data)
+
+
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            with self.subTest(f'Decoding: {data}'):
+                inst = SSH_Core.MPInt.decode(data)
+                self.assertEqual(inst.data, test_val)
+
+    def testEncode(self):
+        for test_val, data, in self.test_data:
+            with self.subTest(f'Encoding: {data}'):
+                inst = SSH_Core.MPInt(data)
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.MPInt.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.MPInt(data)
+            inst2 = SSH_Core.MPInt.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.MPInt, data)
+
+    def testDecodeFail(self):
+        for data in self.corrupt_data:
+            with self.subTest(f'Fail decode with: {data}'):
+                self.assertRaises(StructError, SSH_Core.MPInt.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.MPInt(0)
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
+
+
+class NameList(unittest.TestCase):
+    bad_data = (None, 0, 1, -1, True, False, object, tuple(), list(), dict())
+
+    @property
+    def test_data(self):
         for _ in range(random_tests_count):
-            test_data = random.randint(0, self.int_max)
-            test_inst = SSH_Core.UInt32.decode(SSH_Core.UInt32(test_data).encode())
-            with self.subTest(test_data):
-                self.assertEqual(test_inst.data, test_data)
+            count = random.randint(0, 10)
+            data = list()
+            for item in range(count):
+                data.append(''.join(random.sample(3*printable.replace(',', '', -1), random.randint(0, 100))))
+            size = len(','.join(data))
+            yield pack(f'!I{size}s', size, ','.join(data).encode()), tuple(data)
 
-    def test_equivalence_decoding(self):
-        """Test if encoding data from another instances decode function """\
-            """doesn't malform the data"""
-        for _ in range(random_tests_count):
-            test_data = random.randbytes(4)
-            test_inst = SSH_Core.UInt32.decode(test_data).encode()
-            with self.subTest(test_data):
-                self.assertEqual(test_data, test_inst)
+    @property
+    def corrupt_data(self):
+        for byte_data, _ in self.test_data:
+            yield byte_data[random.randint(1, 4):]
+        for byte_data, _ in self.test_data:
+            size = int.from_bytes(byte_data[:4], 'big')
+            yield (size+1).to_bytes(4, 'big') + byte_data[4:]
+            if size > 0:
+                yield (size-1).to_bytes(4, 'big') + byte_data[4:]
+
+        for byte_data, _ in self.test_data:
+            if len(byte_data) > 4:
+                yield byte_data[:4] + b'\x00' + byte_data[4:]
 
 
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.NameList(*data)
+
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            with self.subTest(f'Decoding: {data}'):
+                inst = SSH_Core.NameList.decode(data)
+                self.assertEqual(inst.data, test_val)
+
+    def testEncode(self):
+        for test_val, data, in self.test_data:
+            with self.subTest(f'Encoding: {data}'):
+                inst = SSH_Core.NameList(*data)
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.NameList.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.NameList(*data)
+            inst2 = SSH_Core.NameList.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.NameList, data)
+
+    def testDecodeFail(self):
+        for data in self.corrupt_data:
+            with self.subTest(f'Fail decode with: {data}'):
+                self.assertRaises(StructError, SSH_Core.NameList.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.NameList()
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                if type(data) in (list, tuple, set, dict):
+                    self.skipTest(f'bad_data is a collection')
+                self.assertRaises(StructError, inst.encode)
 
 if __name__ == '__main__':
     unittest.main()
