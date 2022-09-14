@@ -295,19 +295,23 @@ class NameList(Datatype):
         :param data: bytes
         :return: NameList instance
         """
-        size, _ = unpack('!I', data[:4])
-        packed_list_data, _ = unpack(f'!{size}s', data[4:])
-        unpacked_list_data = packed_list_data.decode().split(',', -1)
-        return cls(*unpacked_list_data)
+        size = unpack('!I', data[:4])
+        if size[0]:
+            packed_list_data = unpack(f'!{size[0]}s', data[4:])
+            unpacked_list_data = packed_list_data[0].decode().split(',', -1)
+            return cls(*unpacked_list_data)
+        return cls()
 
     def encode(self) -> bytes:
         """
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        data = ','.join(self.data).encode()
-        data_size = len(data)
-        return pack(f'!I{data_size}s', data_size, data)
-
+        try:
+            data = ','.join(self.data).encode()
+            data_size = len(data)
+            return pack(f'!I{data_size}s', data_size, data)
+        except:
+            raise error
 
 

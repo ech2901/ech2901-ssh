@@ -1,3 +1,4 @@
+import collections
 import unittest
 import SSH_Core
 import random
@@ -335,7 +336,6 @@ class String(unittest.TestCase):
                 self.assertRaises(StructError, inst.encode)
 
 
-
 class MPInt(unittest.TestCase):
     bad_data = (True, False, None, 0.5, 'test', b'test2', b'', b'3', tuple(), object)
 
@@ -434,6 +434,83 @@ class MPInt(unittest.TestCase):
             with self.subTest(f'Fail encode with: {data}'):
                 self.assertRaises(StructError, inst.encode)
 
+
+class NameList(unittest.TestCase):
+    bad_data = (None, 0, 1, -1, True, False, object, tuple(), list(), dict())
+
+    @property
+    def test_data(self):
+        for _ in range(random_tests_count):
+            count = random.randint(0, 10)
+            data = list()
+            for item in range(count):
+                data.append(''.join(random.sample(3*printable.replace(',', '', -1), random.randint(0, 100))))
+            size = len(','.join(data))
+            yield pack(f'!I{size}s', size, ','.join(data).encode()), tuple(data)
+
+    @property
+    def corrupt_data(self):
+        for byte_data, _ in self.test_data:
+            yield byte_data[random.randint(1, 4):]
+        for byte_data, _ in self.test_data:
+            size = int.from_bytes(byte_data[:4], 'big')
+            yield (size+1).to_bytes(4, 'big') + byte_data[4:]
+            if size > 0:
+                yield (size-1).to_bytes(4, 'big') + byte_data[4:]
+
+        for byte_data, _ in self.test_data:
+            if len(byte_data) > 4:
+                yield byte_data[:4] + b'\x00' + byte_data[4:]
+
+
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.NameList(*data)
+
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            with self.subTest(f'Decoding: {data}'):
+                inst = SSH_Core.NameList.decode(data)
+                self.assertEqual(inst.data, test_val)
+
+    def testEncode(self):
+        for test_val, data, in self.test_data:
+            with self.subTest(f'Encoding: {data}'):
+                inst = SSH_Core.NameList(*data)
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.NameList.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.NameList(*data)
+            inst2 = SSH_Core.NameList.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.NameList, data)
+
+    def testDecodeFail(self):
+        for data in self.corrupt_data:
+            with self.subTest(f'Fail decode with: {data}'):
+                self.assertRaises(StructError, SSH_Core.NameList.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.NameList()
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                if type(data) in (list, tuple, set, dict):
+                    self.skipTest(f'bad_data is a collection')
+                self.assertRaises(StructError, inst.encode)
 
 if __name__ == '__main__':
     unittest.main()
