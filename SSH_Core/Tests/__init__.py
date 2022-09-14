@@ -272,6 +272,14 @@ class String(unittest.TestCase):
     bad_data = (-1, 0, 1, b'test', True, False, None, list(), dict(), object)
 
     @property
+    def corrupt_data(self):
+        for _ in range(random_tests_count):
+            size = random.randint(1, 256)
+            data = ''.join(random.sample(3*printable, size))
+            yield pack(f'!I{size}s', size+1, data.encode())
+            yield pack(f'!I{size}s', size-1, data.encode())
+
+    @property
     def test_data(self):
         for _ in range(random_tests_count):
             size = random.randint(0, 256)
@@ -297,19 +305,34 @@ class String(unittest.TestCase):
                 self.assertEqual(inst.encode(), test_val)
 
     def testDecodeEncode(self):
-        pass
+        for data, _ in self.test_data:
+            inst = SSH_Core.String.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
-        pass
+        for _, data in self.test_data:
+            inst1 = SSH_Core.String(data)
+            inst2 = SSH_Core.String.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
 
     def testInstanceFail(self):
-        pass
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.String, data)
 
     def testDecodeFail(self):
-        pass
+        for data in self.corrupt_data:
+            with self.subTest(f'Fail decode with: {data}'):
+                self.assertRaises(StructError, SSH_Core.String.decode, data)
 
     def testEncodeFail(self):
-        pass
+        for data in self.bad_data:
+            inst = SSH_Core.String('')
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
 
 
 if __name__ == '__main__':

@@ -216,9 +216,10 @@ class String(Datatype):
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        data_size = len(self.data)
-        return pack(f'!I{data_size}s', data_size, self.data.encode())
-
+        if type(self.data) is str:
+            data_size = len(self.data)
+            return pack(f'!I{data_size}s', data_size, self.data.encode())
+        raise error(f'data is not str, is {type(self.data)}')
 
 class MPInt(Datatype):
     def __init__(self, data: int):
