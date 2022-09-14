@@ -141,7 +141,10 @@ class UInt32(Datatype):
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        return pack('!I', self.data)
+        if type(self.data) is int:
+            return pack('!I', self.data)
+        else:
+            raise error(f'data is not int, is {type(self.data)}')
 
 
 class UInt64(Datatype):
@@ -176,7 +179,10 @@ class UInt64(Datatype):
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        return pack('!Q', self.data)
+        if type(self.data) is int:
+            return pack('!Q', self.data)
+        else:
+            raise error(f'data is not int, is {type(self.data)}')
 
 
 class String(Datatype):
@@ -202,7 +208,7 @@ class String(Datatype):
         :return: String instance
         """
         size = unpack('!I', data[:4])
-        string_data = unpack(f'!{size}s', data[4:])
+        string_data = unpack(f'!{size[0]}s', data[4:])
         return cls(string_data[0].decode())
 
     def encode(self) -> bytes:
@@ -247,12 +253,15 @@ class MPInt(Datatype):
         :return: bytes
         """
 
-        data_size = (self.data.bit_length()+7)//8
-        return pack(
-            f'I{data_size}s',
-            data_size,
-            self.data.to_bytes(data_size, 'big', signed=True)
-        )
+        if type(self.data) is int:
+            data_size = (self.data.bit_length()+7)//8
+            return pack(
+                f'I{data_size}s',
+                data_size,
+                self.data.to_bytes(data_size, 'big', signed=True)
+            )
+        else:
+            raise error(f'data is not int, is {type(self.data)}')
 
 
 class NameList(Datatype):
