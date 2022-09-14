@@ -1,28 +1,61 @@
 from struct import pack, unpack, error
+from typing import Any
 
 
 class Datatype(object):
+    """
+    Base class representation of a datatype used by ssh protocol
+    """
 
-    def __len__(self):
+    data: Any
+    size: int
+
+    def __len__(self) -> int:
+        """
+        Return the total length of the object that gets encoded
+        :return:
+        """
         return self.size
 
-    def encode(self):
+    def encode(self) -> bytes:
+        """
+        Encode the data into a bytes object for transmission
+        :return: bytes
+        """
         pass
 
     @classmethod
-    def decode(cls, data):
+    def decode(cls, data: bytes):
+        """
+        Unpack a bytes object so that it's data can be stored
+        :param data: bytes
+        :return: Datatype subclass
+        """
         pass
 
-    def hex(self):
+    def hex(self) -> str:
+        """
+        Return hex representation of the data in a string
+        :return: string representation of the data (IE: 0xDEADBEEF)
+        """
         return f'0x{int.from_bytes(self.encode(), "big"):0{len(self)}X}'
 
-    def __repr__(self):
-        out = f'{self.__class__.__name__}(data={self.data}, len={len(self)})'
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the data
+        :return: "Dataclass(data=self.data, len=self.size)"
+        """
+        out = f'{self.__class__.__name__}({self.data=}, {self.size=})'
         return out
 
 
 class Byte(Datatype):
     def __init__(self, data: bytes):
+        """
+        Create a Byte representation for ssh protocol.
+        Does not have to be ASCII formatted.
+        :param data: bytes Required
+        """
         if type(data) is bytes:
             self.size = len(data)
             self.data = data
@@ -31,10 +64,19 @@ class Byte(Datatype):
 
     @classmethod
     def decode(cls, data: bytes):
+        """
+        unpack a bytes object so that it's data can be stored as a bytes object
+        :param data: bytes
+        :return: Byte instance
+        """
         byte_data, _ = unpack(f'!{len(data)}s', data)
         return cls(byte_data)
 
-    def encode(self):
+    def encode(self) -> bytes:
+        """
+        Encode the data into a bytes object for transmission
+        :return: bytes
+        """
         return pack(f'!{self.size}s', self.data)
 
 
@@ -121,8 +163,8 @@ class String(Datatype):
 class MPInt(Datatype):
     def __init__(self, data: int):
         if type(data) is int:
-            self.int_byte_size = (data.bit_length()+7)//8
-            self.size = self.int_byte_size+4
+            self.data_size = (data.bit_length()+7)//8
+            self.size = self.data_size+4
             self.data = data
         else:
             raise TypeError(f'data is not int, is {type(data)}')
@@ -136,30 +178,20 @@ class MPInt(Datatype):
 
     def encode(self):
         return pack(
-            f'I{self.int_byte_size}s',
-            self.int_byte_size,
-            self.data.to_bytes(self.int_byte_size, 'big', signed=True)
+            f'I{self.data_size}s',
+            self.data_size,
+            self.data.to_bytes(self.data_size, 'big', signed=True)
         )
 
 
 class NameList(Datatype):
-    def __init__(self, *data, size: int=None):
+    def __init__(self, *data, size: int = None):
         for index, str_data in enumerate(data):
             if type(str_data) is not str:
                 raise TypeError(f'data[{index}] is not str, is {type(str_data)}')
         self.data = data
 
-        if type(size) is int:
-            if size < 0:
-                raise ValueError(f'size is less than 0, is {size}')
-            if size.bit_length() > 32:
-                raise ValueError(f'size is more than 32 bits, is {size.bit_length()} bits')
-            self.data_size = size
-        elif type(size) is not None:
-            raise TypeError(f'size is not None or int, is {type(size)}')
-        else:
-            self.data_size = len(','.join(self.data))
-
+        self.data_size = len(','.join(self.data))
         self.size = 4+self.data_size
 
     @classmethod
