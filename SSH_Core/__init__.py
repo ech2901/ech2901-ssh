@@ -221,6 +221,7 @@ class String(Datatype):
             return pack(f'!I{data_size}s', data_size, self.data.encode())
         raise error(f'data is not str, is {type(self.data)}')
 
+
 class MPInt(Datatype):
     def __init__(self, data: int):
         """
@@ -243,9 +244,9 @@ class MPInt(Datatype):
         :param data: bytes
         :return: MPInt instance
         """
-        size, _ = unpack('!I', data[:4])
-        str_data, _ = unpack(f'!{size}s', data[4:])
-        mpint_data = int.from_bytes(str_data, 'big', signed=True)
+        size = unpack('!I', data[:4])
+        str_data = unpack(f'!{size[0]}s', data[4:])
+        mpint_data = int.from_bytes(str_data[0], 'big', signed=True)
         return cls(mpint_data)
 
     def encode(self) -> bytes:
@@ -255,9 +256,13 @@ class MPInt(Datatype):
         """
 
         if type(self.data) is int:
+
             data_size = (self.data.bit_length()+7)//8
+            if self.data.bit_length() % 8 == 0:
+                data_size = data_size+1
+
             return pack(
-                f'I{data_size}s',
+                f'!I{data_size}s',
                 data_size,
                 self.data.to_bytes(data_size, 'big', signed=True)
             )

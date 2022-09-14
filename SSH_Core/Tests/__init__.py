@@ -335,5 +335,105 @@ class String(unittest.TestCase):
                 self.assertRaises(StructError, inst.encode)
 
 
+
+class MPInt(unittest.TestCase):
+    bad_data = (True, False, None, 0.5, 'test', b'test2', b'', b'3', tuple(), object)
+
+    @property
+    def pos_test_data(self):
+        for _ in range(random_tests_count):
+            data = random.randint(0, 10_000)
+
+            if data >= 0 and data.bit_length() % 8 == 0:
+                size = 1+(data.bit_length()+7)//8
+            else:
+                size = (data.bit_length()+7)//8
+
+            byte_data = data.to_bytes(size, 'big', signed=True)
+
+            yield pack(f'!I{size}s', size, byte_data), data
+
+    @property
+    def neg_test_data(self):
+        for _ in range(random_tests_count):
+            data = -random.randint(1, 10_000)
+
+            if data.bit_length() % 8 == 0:
+                size = 1+(data.bit_length()+7)//8
+            else:
+                size = (data.bit_length()+7)//8
+
+            byte_data = data.to_bytes(size, 'big', signed=True)
+
+            yield pack(f'!I{size}s', size, byte_data), data
+
+    @property
+    def test_data(self):
+        for byte_data, data in self.pos_test_data:
+            yield byte_data, data
+        for byte_data, data in self.neg_test_data:
+            yield byte_data, data
+
+    @property
+    def corrupt_data(self):
+        for byte_data, _ in self.test_data:
+            yield byte_data[random.randint(1, 4):]
+        for byte_data, _ in self.test_data:
+            size = int.from_bytes(byte_data[:4], 'big')
+            yield (size+1).to_bytes(4, 'big') + byte_data[4:]
+            yield (size-1).to_bytes(4, 'big') + byte_data[4:]
+
+        for byte_data, _ in self.test_data:
+            yield byte_data[:4] + b'\x00' + byte_data[4:]
+
+    def testInstances(self):
+        for _, data in self.test_data:
+            with self.subTest(data):
+                SSH_Core.MPInt(data)
+
+
+    def testDecode(self):
+        for data, test_val in self.test_data:
+            with self.subTest(f'Decoding: {data}'):
+                inst = SSH_Core.MPInt.decode(data)
+                self.assertEqual(inst.data, test_val)
+
+    def testEncode(self):
+        for test_val, data, in self.test_data:
+            with self.subTest(f'Encoding: {data}'):
+                inst = SSH_Core.MPInt(data)
+                self.assertEqual(inst.encode(), test_val)
+
+    def testDecodeEncode(self):
+        for data, _ in self.test_data:
+            inst = SSH_Core.MPInt.decode(data)
+            with self.subTest(f'Decoding then encoding: {data}'):
+                self.assertEqual(inst.encode(), data)
+
+    def testEncodeDecode(self):
+        for _, data in self.test_data:
+            inst1 = SSH_Core.MPInt(data)
+            inst2 = SSH_Core.MPInt.decode(inst1.encode())
+            with self.subTest(f'Encoding then decoding: {data}'):
+                self.assertEqual(inst2.data, data)
+
+    def testInstanceFail(self):
+        for data in self.bad_data:
+            with self.subTest(f'Fail instance with: {data}'):
+                self.assertRaises(TypeError, SSH_Core.MPInt, data)
+
+    def testDecodeFail(self):
+        for data in self.corrupt_data:
+            with self.subTest(f'Fail decode with: {data}'):
+                self.assertRaises(StructError, SSH_Core.MPInt.decode, data)
+
+    def testEncodeFail(self):
+        for data in self.bad_data:
+            inst = SSH_Core.MPInt(0)
+            inst.data = data
+            with self.subTest(f'Fail encode with: {data}'):
+                self.assertRaises(StructError, inst.encode)
+
+
 if __name__ == '__main__':
     unittest.main()
