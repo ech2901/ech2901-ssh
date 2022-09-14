@@ -71,7 +71,9 @@ class Byte(Datatype):
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        return pack(f'!{len(self.data)}s', self.data)
+        if type(self.data) is bytes:
+            return pack(f'!{len(self.data)}s', self.data)
+        raise error(f'data is not bytes, is {type(self.data)}')
 
 
 class Boolean(Datatype):
