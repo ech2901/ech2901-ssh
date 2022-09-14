@@ -8,14 +8,6 @@ class Datatype(object):
     """
 
     data: Any
-    size: int
-
-    def __len__(self) -> int:
-        """
-        Return the total length of the object that gets encoded
-        :return:
-        """
-        return self.size
 
     def encode(self) -> bytes:
         """
@@ -57,7 +49,6 @@ class Byte(Datatype):
         :param data: bytes Required
         """
         if type(data) is bytes:
-            self.size = len(data)
             self.data = data
         else:
             raise TypeError(f'data is not bytes, is {type(data)}')
@@ -69,15 +60,18 @@ class Byte(Datatype):
         :param data: bytes
         :return: Byte instance
         """
-        byte_data, _ = unpack(f'!{len(data)}s', data)
-        return cls(byte_data)
+        if type(data) is bytes:
+            byte_data = unpack(f'!{len(data)}s', data)
+            return cls(*byte_data)
+        else:
+            raise TypeError(f'type of data is not bytes, is {type(data)}')
 
     def encode(self) -> bytes:
         """
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        return pack(f'!{self.size}s', self.data)
+        return pack(f'!{len(self.data)}s', self.data)
 
 
 class Boolean(Datatype):
@@ -88,7 +82,6 @@ class Boolean(Datatype):
         :param data: bool Required
         """
         if type(data) is bool:
-            self.size = 1
             self.data = data
         else:
             raise TypeError(f'data is not bool, is {type(data)}')
@@ -100,8 +93,8 @@ class Boolean(Datatype):
         :param data: bytes
         :return: Boolean instance
         """
-        bool_data, _ = unpack('!?', data)
-        return cls(bool_data)
+        bool_data = unpack('!?', data)
+        return cls(*bool_data)
 
     def encode(self) -> bytes:
         """
@@ -111,7 +104,7 @@ class Boolean(Datatype):
         """
         if type(self.data) is bool:
             return b'\x01' if self.data else b'\x00'
-        raise error
+        raise error(f'data is not bool, is {type(self.data)}')
 
 
 class UInt32(Datatype):
@@ -126,7 +119,6 @@ class UInt32(Datatype):
                 raise ValueError(f'data is less than 0: {data}')
             if data.bit_length() > 32:
                 raise ValueError(f'data is more than 32 bits: {data} Bits: {data.bit_length()}')
-            self.size = 4
             self.data = data
         else:
             raise TypeError(f'data is not int, is {type(data)}')
@@ -139,8 +131,8 @@ class UInt32(Datatype):
         :param data: bytes
         :return: UInt32 instance
         """
-        uint_data, _ = unpack('!I', data)
-        return cls(uint_data)
+        uint_data = unpack('!I', data)
+        return cls(*uint_data)
 
     def encode(self) -> bytes:
         """
@@ -162,7 +154,6 @@ class UInt64(Datatype):
                 raise ValueError(f'data is less than 0: {data}')
             if data.bit_length() > 64:
                 raise ValueError(f'data is more than 64 bits: {data} Bits: {data.bit_length()}')
-            self.size = 8
             self.data = data
         else:
             raise TypeError(f'data is not int, is {type(data)}')
@@ -175,8 +166,8 @@ class UInt64(Datatype):
         :param data: bytes
         :return: UInt64 instance
         """
-        uint_data, _ = unpack('!Q', data)
-        return cls(uint_data)
+        uint_data = unpack('!Q', data)
+        return cls(*uint_data)
 
     def encode(self) -> bytes:
         """
@@ -194,8 +185,6 @@ class String(Datatype):
         :param data: str Required
         """
         if type(data) is str:
-            self.str_size = len(data)
-            self.size = 4+self.str_size
             self.data = data
         else:
             raise TypeError(f'data is not str, is {type(data)}')
@@ -211,15 +200,16 @@ class String(Datatype):
         :return: String instance
         """
         size = unpack('!I', data[:4])
-        string_data, _ = unpack(f'!{size}s', data[4:])
-        return cls(string_data.decode())
+        string_data = unpack(f'!{size}s', data[4:])
+        return cls(string_data[0].decode())
 
     def encode(self) -> bytes:
         """
         Encode the data into a bytes object for transmission
         :return: bytes
         """
-        return pack(f'!I{self.str_size}s', self.str_size, self.data.encode())
+        data_size = len(self.data)
+        return pack(f'!I{data_size}s', data_size, self.data.encode())
 
 
 class MPInt(Datatype):
@@ -231,8 +221,6 @@ class MPInt(Datatype):
         :param data: str Required
         """
         if type(data) is int:
-            self.data_size = (data.bit_length()+7)//8
-            self.size = self.data_size+4
             self.data = data
         else:
             raise TypeError(f'data is not int, is {type(data)}')
@@ -256,10 +244,12 @@ class MPInt(Datatype):
         Encode the data into a bytes object for transmission
         :return: bytes
         """
+
+        data_size = (self.data.bit_length()+7)//8
         return pack(
-            f'I{self.data_size}s',
-            self.data_size,
-            self.data.to_bytes(self.data_size, 'big', signed=True)
+            f'I{data_size}s',
+            data_size,
+            self.data.to_bytes(data_size, 'big', signed=True)
         )
 
 
@@ -277,8 +267,6 @@ class NameList(Datatype):
                 raise TypeError(f'data[{index}] is not str, is {type(str_data)}')
         self.data = data
 
-        self.data_size = len(','.join(self.data))
-        self.size = 4+self.data_size
 
     @classmethod
     def decode(cls, data):
@@ -301,7 +289,8 @@ class NameList(Datatype):
         :return: bytes
         """
         data = ','.join(self.data).encode()
-        return pack(f'!I{self.data_size}s', self.data_size, data)
+        data_size = len(data)
+        return pack(f'!I{data_size}s', data_size, data)
 
 
 
