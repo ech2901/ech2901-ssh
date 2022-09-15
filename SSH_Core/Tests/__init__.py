@@ -32,6 +32,14 @@ class Byte(unittest.TestCase):
                 except:
                     self.fail(data)
 
+    def testDecodeOversized(self):
+        for data in self.test_data:
+            size = random.randint(0, len(data))
+            with self.subTest(f'decode {size} bytes of {data}'):
+                inst, consumed_data = SSH_Core.Byte.decode(data, size)
+                self.assertEqual(inst.data, data[:size])
+                self.assertEqual(consumed_data, data[size:])
+
     def testEncode(self):
         for data in self.test_data:
             inst = SSH_Core.Byte(data)
@@ -90,6 +98,24 @@ class Boolean(unittest.TestCase):
                             self.assertTrue(inst.data)
                 except:
                     self.fail(data)
+
+    def testDecodeOversized(self):
+        for data in self.test_data:
+            data = data+random.randbytes(4)
+            with self.subTest(f'Test decode: {data}'):
+                try:
+                    inst, consumed_data = SSH_Core.Boolean.decode(data)
+                    with self.subTest(f'Test truth: {data}'):
+                        if data[0:1] == b'\x00':
+                            self.assertFalse(inst.data)
+                            self.assertEqual(consumed_data, data[1:])
+                        else:
+                            self.assertTrue(inst.data)
+                            self.assertEqual(consumed_data, data[1:])
+                except:
+                    self.fail(data)
+
+
 
     def testEncode(self):
         for data in (True, False):
@@ -160,6 +186,17 @@ class UInt32(unittest.TestCase):
             except:
                 self.fail(data)
 
+    def testDecodeOversized(self):
+        for data, test_val in self.test_data:
+            data = data+random.randbytes(4)
+            try:
+                inst, consumed_data = SSH_Core.UInt32.decode(data)
+                with self.subTest(f'Decode: {data}'):
+                    self.assertEqual(inst.data, test_val)
+                    self.assertEqual(consumed_data, data[4:])
+            except:
+                self.fail(data)
+
     def testEncode(self):
         for test_val, data in self.test_data:
             inst = SSH_Core.UInt32(data)
@@ -223,6 +260,17 @@ class UInt64(unittest.TestCase):
                 inst, _ = SSH_Core.UInt64.decode(data)
                 with self.subTest(f'Decode: {data}'):
                     self.assertEqual(inst.data, test_val)
+            except:
+                self.fail(data)
+
+    def testDecodeOversized(self):
+        for data, test_val in self.test_data:
+            data = data+random.randbytes(4)
+            try:
+                inst, consumed_data = SSH_Core.UInt64.decode(data)
+                with self.subTest(f'Decode: {data}'):
+                    self.assertEqual(inst.data, test_val)
+                    self.assertEqual(consumed_data, data[8:])
             except:
                 self.fail(data)
 
@@ -297,6 +345,16 @@ class String(unittest.TestCase):
             with self.subTest(f'Decoding: {data}'):
                 inst, _ = SSH_Core.String.decode(data)
                 self.assertEqual(inst.data, test_val)
+
+    def testDecodeOversized(self):
+        for data, test_val in self.test_data:
+            data = data+random.randbytes(4)
+            size = int.from_bytes(data[0:4], 'big')
+
+            with self.subTest(f'Decoding: {data}'):
+                inst, consumed_data = SSH_Core.String.decode(data)
+                self.assertEqual(inst.data, test_val)
+                self.assertEqual(consumed_data, data[4+size:])
 
     def testEncode(self):
         for test_val, data, in self.test_data:
@@ -391,6 +449,15 @@ class MPInt(unittest.TestCase):
                 inst, _ = SSH_Core.MPInt.decode(data)
                 self.assertEqual(inst.data, test_val)
 
+    def testDecodeOversized(self):
+        for data, test_val in self.test_data:
+            data = data+random.randbytes(4)
+            size = int.from_bytes(data[0:4], 'big')
+            with self.subTest(f'Decoding: {data}'):
+                inst, consumed_data = SSH_Core.MPInt.decode(data)
+                self.assertEqual(inst.data, test_val)
+                self.assertEqual(consumed_data, data[4+size:])
+
     def testEncode(self):
         for test_val, data, in self.test_data:
             with self.subTest(f'Encoding: {data}'):
@@ -439,7 +506,10 @@ class NameList(unittest.TestCase):
             for item in range(count):
                 data.append(''.join(random.sample(3*printable.replace(',', '', -1), random.randint(0, 100))))
             size = len(','.join(data))
-            yield pack(f'!I{size}s', size, ','.join(data).encode()), tuple(data)
+            if size:
+                yield pack(f'!I{size}s', size, ','.join(data).encode()), tuple(data)
+            else:
+                yield pack(f'!I{size}s', size, ','.join(data).encode()), tuple()
 
     @property
     def corrupt_data(self):
@@ -457,6 +527,15 @@ class NameList(unittest.TestCase):
             with self.subTest(f'Decoding: {data}'):
                 inst, _ = SSH_Core.NameList.decode(data)
                 self.assertEqual(inst.data, test_val)
+
+    def testDecodeOversized(self):
+        for data, test_val in self.test_data:
+            data = data+random.randbytes(4)
+            size = int.from_bytes(data[0:4], 'big')
+            with self.subTest(f'Decoding: {data}'):
+                inst, consumed_data = SSH_Core.NameList.decode(data)
+                self.assertEqual(inst.data, test_val, test_val)
+                self.assertEqual(consumed_data, data[4+size:])
 
     def testEncode(self):
         for test_val, data, in self.test_data:
