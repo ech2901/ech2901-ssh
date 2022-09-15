@@ -26,7 +26,7 @@ class Byte(unittest.TestCase):
         for data in self.test_data:
             with self.subTest(f'decode: {data}'):
                 try:
-                    inst = SSH_Core.Byte.decode(data)
+                    inst, _ = SSH_Core.Byte.decode(data, -1)
                     with self.subTest(f'check data integrity: {data}'):
                         self.assertEqual(inst.data, data)
                 except:
@@ -40,14 +40,14 @@ class Byte(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data in self.test_data:
-            inst = SSH_Core.Byte.decode(data)
+            inst, _ = SSH_Core.Byte.decode(data, -1)
             with self.subTest(f'Test decode then encode: {data}'):
                 self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
         for data in self.test_data:
             inst1 = SSH_Core.Byte(data)
-            inst2 = SSH_Core.Byte.decode(inst1.encode())
+            inst2, _ = SSH_Core.Byte.decode(inst1.encode(), -1)
             with self.subTest(f'Test encode then decode: {data}'):
                 self.assertEqual(inst2.data, data)
 
@@ -59,7 +59,7 @@ class Byte(unittest.TestCase):
     def testDecodeFail(self):
         for data in self.bad_data:
             with self.subTest(f'Expect fail: attempt to decode {data}'):
-                self.assertRaises(TypeError, SSH_Core.Byte.decode, data)
+                self.assertRaises(TypeError, SSH_Core.Byte.decode, data, -1)
 
     def testEncodeFail(self):
         for data in self.bad_data:
@@ -70,7 +70,7 @@ class Byte(unittest.TestCase):
 
 
 class Boolean(unittest.TestCase):
-    bad_data = (None, 1, 0, -1, 0.5, 'test', b'test2', list, dict())
+    bad_data = (None, 1, 0, -1, 0.5, 'test', b'', list, dict())
     test_data = [val.to_bytes(1, 'big') for val in range(256)]
 
     def testInstances(self):
@@ -82,7 +82,7 @@ class Boolean(unittest.TestCase):
         for data in self.test_data:
             with self.subTest(f'Test decode: {data}'):
                 try:
-                    inst = SSH_Core.Boolean.decode(data)
+                    inst, _ = SSH_Core.Boolean.decode(data)
                     with self.subTest(f'Test truth: {data}'):
                         if data == b'\x00':
                             self.assertFalse(inst.data)
@@ -102,7 +102,7 @@ class Boolean(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data in self.test_data:
-            inst = SSH_Core.Boolean.decode(data)
+            inst, _ = SSH_Core.Boolean.decode(data)
             with self.subTest(f'Decoding then encoding: {data}'):
                 if data == b'\x00':
                     self.assertEqual(inst.encode(), b'\x00')
@@ -112,7 +112,7 @@ class Boolean(unittest.TestCase):
     def testEncodeDecode(self):
         for data in (True, False):
             inst1 = SSH_Core.Boolean(data)
-            inst2 = SSH_Core.Boolean.decode(inst1.encode())
+            inst2, _ = SSH_Core.Boolean.decode(inst1.encode())
             with self.subTest(f'Encoding then decoding: {data}'):
                 self.assertEqual(inst2.data, data)
 
@@ -122,7 +122,7 @@ class Boolean(unittest.TestCase):
                 self.assertRaises(TypeError, SSH_Core.Boolean, data)
 
     def testDecodeFail(self):
-        for data in (b'', b'\x01\x00', b'test', *self.bad_data):
+        for data in self.bad_data:
             with self.subTest(f'Fail decode with: {data}'):
                 if type(data) is bytes:
                     self.assertRaises(StructError, SSH_Core.Boolean.decode, data)
@@ -138,7 +138,7 @@ class Boolean(unittest.TestCase):
 
 
 class UInt32(unittest.TestCase):
-    bad_data = (1<<33, -1, 0.5, True, False, None, object, list(), dict(), b'', b'1', 'test')
+    bad_data = (1 << 33, -1, 0.5, True, False, None, object, list(), dict(), b'', b'1', 'test')
 
     @property
     def test_data(self):
@@ -154,7 +154,7 @@ class UInt32(unittest.TestCase):
     def testDecode(self):
         for data, test_val in self.test_data:
             try:
-                inst = SSH_Core.UInt32.decode(data)
+                inst, _ = SSH_Core.UInt32.decode(data)
                 with self.subTest(f'Decode: {data}'):
                     self.assertEqual(inst.data, test_val)
             except:
@@ -168,14 +168,14 @@ class UInt32(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data, _ in self.test_data:
-            inst = SSH_Core.UInt32.decode(data)
+            inst, _ = SSH_Core.UInt32.decode(data)
             with self.subTest(f'Decoding than encoding: {data}'):
                 self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
         for _, data in self.test_data:
             inst1 = SSH_Core.UInt32(data)
-            inst2 = SSH_Core.UInt32.decode(inst1.encode())
+            inst2, _ = SSH_Core.UInt32.decode(inst1.encode())
             with self.subTest(f'Encoding than decoding: {data}'):
                 self.assertEqual(inst2.data, data)
 
@@ -188,7 +188,7 @@ class UInt32(unittest.TestCase):
                     self.assertRaises(TypeError, SSH_Core.UInt32, data)
 
     def testDecodeFail(self):
-        for data in (b'', b'asd', b'asdfg', *self.bad_data):
+        for data in (b'', b'asd', *self.bad_data):
             with self.subTest(f'Fail decode with: {data}'):
                 if type(data) is bytes:
                     self.assertRaises(StructError, SSH_Core.UInt32.decode, data)
@@ -204,7 +204,7 @@ class UInt32(unittest.TestCase):
 
 
 class UInt64(unittest.TestCase):
-    bad_data = (1<<65, -1, 0.5, True, False, None, object, list(), dict(), b'', b'1', 'test')
+    bad_data = (1 << 65, -1, 0.5, True, False, None, object, list(), dict(), b'', b'1', 'test')
 
     @property
     def test_data(self):
@@ -220,7 +220,7 @@ class UInt64(unittest.TestCase):
     def testDecode(self):
         for data, test_val in self.test_data:
             try:
-                inst = SSH_Core.UInt64.decode(data)
+                inst, _ = SSH_Core.UInt64.decode(data)
                 with self.subTest(f'Decode: {data}'):
                     self.assertEqual(inst.data, test_val)
             except:
@@ -234,14 +234,14 @@ class UInt64(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data, _ in self.test_data:
-            inst = SSH_Core.UInt64.decode(data)
+            inst, _ = SSH_Core.UInt64.decode(data)
             with self.subTest(f'Decoding than encoding: {data}'):
                 self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
         for _, data in self.test_data:
             inst1 = SSH_Core.UInt64(data)
-            inst2 = SSH_Core.UInt64.decode(inst1.encode())
+            inst2, _ = SSH_Core.UInt64.decode(inst1.encode())
             with self.subTest(f'Encoding than decoding: {data}'):
                 self.assertEqual(inst2.data, data)
 
@@ -254,7 +254,7 @@ class UInt64(unittest.TestCase):
                     self.assertRaises(TypeError, SSH_Core.UInt64, data)
 
     def testDecodeFail(self):
-        for data in (b'', b'asd', b'asdffauyg', *self.bad_data):
+        for data in (b'', b'asd', *self.bad_data):
             with self.subTest(f'Fail decode with: {data}'):
                 if type(data) is bytes:
                     self.assertRaises(StructError, SSH_Core.UInt64.decode, data)
@@ -278,7 +278,6 @@ class String(unittest.TestCase):
             size = random.randint(1, 256)
             data = ''.join(random.sample(3*printable, size))
             yield pack(f'!I{size}s', size+1, data.encode())
-            yield pack(f'!I{size}s', size-1, data.encode())
 
     @property
     def test_data(self):
@@ -296,7 +295,7 @@ class String(unittest.TestCase):
     def testDecode(self):
         for data, test_val in self.test_data:
             with self.subTest(f'Decoding: {data}'):
-                inst = SSH_Core.String.decode(data)
+                inst, _ = SSH_Core.String.decode(data)
                 self.assertEqual(inst.data, test_val)
 
     def testEncode(self):
@@ -307,14 +306,14 @@ class String(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data, _ in self.test_data:
-            inst = SSH_Core.String.decode(data)
+            inst, _ = SSH_Core.String.decode(data)
             with self.subTest(f'Decoding then encoding: {data}'):
                 self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
         for _, data in self.test_data:
             inst1 = SSH_Core.String(data)
-            inst2 = SSH_Core.String.decode(inst1.encode())
+            inst2, _ = SSH_Core.String.decode(inst1.encode())
             with self.subTest(f'Encoding then decoding: {data}'):
                 self.assertEqual(inst2.data, data)
 
@@ -377,25 +376,19 @@ class MPInt(unittest.TestCase):
     @property
     def corrupt_data(self):
         for byte_data, _ in self.test_data:
-            yield byte_data[random.randint(1, 4):]
-        for byte_data, _ in self.test_data:
             size = int.from_bytes(byte_data[:4], 'big')
             yield (size+1).to_bytes(4, 'big') + byte_data[4:]
-            yield (size-1).to_bytes(4, 'big') + byte_data[4:]
 
-        for byte_data, _ in self.test_data:
-            yield byte_data[:4] + b'\x00' + byte_data[4:]
 
     def testInstances(self):
         for _, data in self.test_data:
             with self.subTest(data):
                 SSH_Core.MPInt(data)
 
-
     def testDecode(self):
         for data, test_val in self.test_data:
             with self.subTest(f'Decoding: {data}'):
-                inst = SSH_Core.MPInt.decode(data)
+                inst, _ = SSH_Core.MPInt.decode(data)
                 self.assertEqual(inst.data, test_val)
 
     def testEncode(self):
@@ -406,14 +399,14 @@ class MPInt(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data, _ in self.test_data:
-            inst = SSH_Core.MPInt.decode(data)
+            inst, _ = SSH_Core.MPInt.decode(data)
             with self.subTest(f'Decoding then encoding: {data}'):
                 self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
         for _, data in self.test_data:
             inst1 = SSH_Core.MPInt(data)
-            inst2 = SSH_Core.MPInt.decode(inst1.encode())
+            inst2, _ = SSH_Core.MPInt.decode(inst1.encode())
             with self.subTest(f'Encoding then decoding: {data}'):
                 self.assertEqual(inst2.data, data)
 
@@ -451,17 +444,8 @@ class NameList(unittest.TestCase):
     @property
     def corrupt_data(self):
         for byte_data, _ in self.test_data:
-            yield byte_data[random.randint(1, 4):]
-        for byte_data, _ in self.test_data:
             size = int.from_bytes(byte_data[:4], 'big')
             yield (size+1).to_bytes(4, 'big') + byte_data[4:]
-            if size > 0:
-                yield (size-1).to_bytes(4, 'big') + byte_data[4:]
-
-        for byte_data, _ in self.test_data:
-            if len(byte_data) > 4:
-                yield byte_data[:4] + b'\x00' + byte_data[4:]
-
 
     def testInstances(self):
         for _, data in self.test_data:
@@ -471,7 +455,7 @@ class NameList(unittest.TestCase):
     def testDecode(self):
         for data, test_val in self.test_data:
             with self.subTest(f'Decoding: {data}'):
-                inst = SSH_Core.NameList.decode(data)
+                inst, _ = SSH_Core.NameList.decode(data)
                 self.assertEqual(inst.data, test_val)
 
     def testEncode(self):
@@ -482,14 +466,14 @@ class NameList(unittest.TestCase):
 
     def testDecodeEncode(self):
         for data, _ in self.test_data:
-            inst = SSH_Core.NameList.decode(data)
+            inst, _ = SSH_Core.NameList.decode(data)
             with self.subTest(f'Decoding then encoding: {data}'):
                 self.assertEqual(inst.encode(), data)
 
     def testEncodeDecode(self):
         for _, data in self.test_data:
             inst1 = SSH_Core.NameList(*data)
-            inst2 = SSH_Core.NameList.decode(inst1.encode())
+            inst2, _ = SSH_Core.NameList.decode(inst1.encode())
             with self.subTest(f'Encoding then decoding: {data}'):
                 self.assertEqual(inst2.data, data)
 

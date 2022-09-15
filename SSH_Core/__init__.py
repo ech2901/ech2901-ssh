@@ -41,26 +41,6 @@ class Datatype(object):
         out = f'{self.__class__.__name__}(data={self.data})'
         return out
 
-    @classmethod
-    def __class_getitem__(cls, size: int):
-        """
-        Allow the data to be decoded/encoded to be limited to a soze
-        :param item: int of hoe many bytes should be consume
-        :return:
-        """
-
-        class LimitedClass(cls):
-            @staticmethod
-            def decode(data: bytes):
-                if type(data) is bytes:
-                    if len(data) == size:
-                        return cls.decode(data)
-                    raise ValueError(f'size of data is not {size}, is {len(data)}')
-                raise TypeError(f'data is not bytes, is {type(data)}')
-
-        return LimitedClass
-
-
 
 class Byte(Datatype):
     def __init__(self, data: bytes):
@@ -75,15 +55,20 @@ class Byte(Datatype):
             raise TypeError(f'data is not bytes, is {type(data)}')
 
     @classmethod
-    def decode(cls, data: bytes):
+    def decode(cls, data: bytes, size: int = 1):
         """
         unpack a bytes object so that it's data can be stored as a bytes object
+        optional size int to describe how many byes should be consuumed
         :param data: bytes
+        :param size: int
         :return: Byte instance
         """
         if type(data) is bytes:
-            byte_data = unpack(f'!{len(data)}s', data)
-            return cls(*byte_data)
+            if size == -1:
+                byte_data = unpack(f'!{len(data)}s', data)
+                return cls(*byte_data), b''
+            byte_data = unpack(f'!{size}s', data[0:size])
+            return cls(*byte_data), data[size:]
         else:
             raise TypeError(f'type of data is not bytes, is {type(data)}')
 
@@ -116,8 +101,8 @@ class Boolean(Datatype):
         :param data: bytes
         :return: Boolean instance
         """
-        bool_data = unpack('!?', data)
-        return cls(*bool_data)
+        bool_data = unpack('!?', data[0:1])
+        return cls(*bool_data), data[1:]
 
     def encode(self) -> bytes:
         """
@@ -154,8 +139,8 @@ class UInt32(Datatype):
         :param data: bytes
         :return: UInt32 instance
         """
-        uint_data = unpack('!I', data)
-        return cls(*uint_data)
+        uint_data = unpack('!I', data[:4])
+        return cls(*uint_data), data[4:]
 
     def encode(self) -> bytes:
         """
@@ -192,8 +177,8 @@ class UInt64(Datatype):
         :param data: bytes
         :return: UInt64 instance
         """
-        uint_data = unpack('!Q', data)
-        return cls(*uint_data)
+        uint_data = unpack('!Q', data[:8])
+        return cls(*uint_data), data[8:]
 
     def encode(self) -> bytes:
         """
@@ -229,8 +214,8 @@ class String(Datatype):
         :return: String instance
         """
         size = unpack('!I', data[:4])
-        string_data = unpack(f'!{size[0]}s', data[4:])
-        return cls(string_data[0].decode())
+        string_data = unpack(f'!{size[0]}s', data[4:4+size[0]])
+        return cls(string_data[0].decode()), data[4+size[0]:]
 
     def encode(self) -> bytes:
         """
@@ -266,9 +251,9 @@ class MPInt(Datatype):
         :return: MPInt instance
         """
         size = unpack('!I', data[:4])
-        str_data = unpack(f'!{size[0]}s', data[4:])
+        str_data = unpack(f'!{size[0]}s', data[4:4+size[0]])
         mpint_data = int.from_bytes(str_data[0], 'big', signed=True)
-        return cls(mpint_data)
+        return cls(mpint_data), data[4+size[0]:]
 
     def encode(self) -> bytes:
         """
@@ -318,10 +303,10 @@ class NameList(Datatype):
         """
         size = unpack('!I', data[:4])
         if size[0]:
-            packed_list_data = unpack(f'!{size[0]}s', data[4:])
+            packed_list_data = unpack(f'!{size[0]}s', data[4:4+size[0]])
             unpacked_list_data = packed_list_data[0].decode().split(',', -1)
-            return cls(*unpacked_list_data)
-        return cls()
+            return cls(*unpacked_list_data), data[4+size[0]:]
+        return cls(), data[4:]
 
     def encode(self) -> bytes:
         """
