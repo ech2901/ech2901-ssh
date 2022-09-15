@@ -1,22 +1,27 @@
 from SSH_Core import Byte, Boolean, UInt32, UInt64, String, MPInt, NameList
+from dataclasses import dataclass
 from random import randint
 from os import urandom
 from struct import unpack
 
-
+@dataclass
 class Packet(object):
-
+    packet_len: UInt32
+    padding_len: Byte
+    payload: Byte
+    padding: Byte
+    mac: Byte
 
     @classmethod
-    def decode(cls):
+    def decode(cls, data: bytes, mac_len=0):
+        packet_length, data = UInt32.decode(data)
+        padding_length, data = Byte.decode(data, 1)
 
+        size = packet_length-padding_length-1
+        payload, data = Byte.decode(data, size)
+        random_padding, data = Byte.decode(data, int(padding_length))
+        mac, data = Byte.decode(data, mac_len)
 
+        return cls(packet_length, padding_length, payload, random_padding, mac), data
 
-    def encode(self, cipher_size=0, mac_len=0):
-        padding_mod = cipher_size if cipher_size else 8
-        random_size = randint(4, 255)
-        if random_size > 127:
-            random_size = random_size - ((self.packet_length.data + random_size) % padding_mod)
-        else:
-            pass
 
