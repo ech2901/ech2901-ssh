@@ -41,6 +41,21 @@ class Datatype(object):
         out = f'{self.__class__.__name__}(data={self.data})'
         return out
 
+    def __int__(self):
+        return int.from_bytes(self.encode(), 'big')
+
+    def __sub__(self, other):
+        return int(self)-int(other)
+
+    def __add__(self, other):
+        return int(self)+int(other)
+
+    def __eq__(self, other):
+        return int(self) == int(other)
+
+    def __hash__(self):
+        return int(self)
+
 
 class Byte(Datatype):
     def __init__(self, data: bytes):
@@ -152,6 +167,9 @@ class UInt32(Datatype):
         else:
             raise error(f'data is not int, is {type(self.data)}')
 
+    def __int__(self):
+        return self.data
+
 
 class UInt64(Datatype):
     def __init__(self, data: int):
@@ -189,6 +207,9 @@ class UInt64(Datatype):
             return pack('!Q', self.data)
         else:
             raise error(f'data is not int, is {type(self.data)}')
+
+    def __int__(self):
+        return self.data
 
 
 class String(Datatype):
@@ -274,6 +295,9 @@ class MPInt(Datatype):
             )
         else:
             raise error(f'data is not int, is {type(self.data)}')
+
+    def __int__(self):
+        return self.data
 
 
 class NameList(Datatype):
