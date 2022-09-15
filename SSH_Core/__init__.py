@@ -98,6 +98,14 @@ class Byte(Datatype):
             return pack(f'!{len(self.data)}s', self.data)
         raise error(f'data is not bytes, is {type(self.data)}')
 
+    @classmethod
+    def __class_getitem__(cls, size):
+        class SizedByte(cls):
+            @classmethod
+            def decode(sub_cls, data: bytes):
+                return cls.decode(data, size)
+
+        return SizedByte
 
 class Boolean(Datatype):
     def __init__(self, data: bool):
