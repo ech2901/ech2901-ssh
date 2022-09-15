@@ -1,14 +1,13 @@
 from enum import Enum
-from SSH_Core import Byte
 
 
-class MessageNumber(Byte, Enum):
+class MessageNumber(Enum):
+    @classmethod
+    def decode(cls, data: bytes):
+        return cls(int.from_bytes(data[0:1], 'big')), data[1:]
 
-    def __init__(self, value: int):
-        super().__init__(value.to_bytes(1, 'big'))
-
-    def __repr__(self):
-        return f'Byte(data={self.data})'
+    def encode(self):
+        return self._value_.to_bytes(1, 'big')
 
 
 class TransportMessage(MessageNumber):
