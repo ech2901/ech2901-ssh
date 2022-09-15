@@ -58,7 +58,7 @@ class Byte(Datatype):
     def decode(cls, data: bytes, size: int = 1):
         """
         unpack a bytes object so that it's data can be stored as a bytes object
-        optional size int to describe how many byes should be consuumed
+        optional size int to describe how many byes should be consumed
         :param data: bytes
         :param size: int
         :return: Byte instance
@@ -282,14 +282,13 @@ class NameList(Datatype):
         Create a NameList representation for ssh protocol.
         data can only be a list of strings.
         The total max size is up to 4,294,967,295 bytes long for all data with overhead.
-        Overhead is caused by commas (,) to seperate the strings.
+        Overhead is caused by commas (,) to separate the strings.
         :param data: *str Required
         """
         for index, str_data in enumerate(data):
             if type(str_data) is not str:
                 raise TypeError(f'data[{index}] is not str, is {type(str_data)}')
         self.data = data
-
 
     @classmethod
     def decode(cls, data):
@@ -319,5 +318,3 @@ class NameList(Datatype):
             return pack(f'!I{data_size}s', data_size, data)
         except:
             raise error
-
-
