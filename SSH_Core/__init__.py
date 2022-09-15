@@ -41,6 +41,26 @@ class Datatype(object):
         out = f'{self.__class__.__name__}(data={self.data})'
         return out
 
+    @classmethod
+    def __class_getitem__(cls, size: int):
+        """
+        Allow the data to be decoded/encoded to be limited to a soze
+        :param item: int of hoe many bytes should be consume
+        :return:
+        """
+
+        class LimitedClass(cls):
+            @staticmethod
+            def decode(data: bytes):
+                if type(data) is bytes:
+                    if len(data) == size:
+                        return cls.decode(data)
+                    raise ValueError(f'size of data is not {size}, is {len(data)}')
+                raise TypeError(f'data is not bytes, is {type(data)}')
+
+        return LimitedClass
+
+
 
 class Byte(Datatype):
     def __init__(self, data: bytes):
