@@ -16,7 +16,6 @@ class Packet(object):
 
     @classmethod
     def decode(cls, data: bytes):
-
         output = dict()
         for key, data_type in cls.__annotations__.items():
             if key == 'payload':
@@ -28,6 +27,11 @@ class Packet(object):
                 output[key], data = data_type.decode(data)
         return cls(**output), data
 
+    def encode(self):
+        output = b''
+        for data in self.__dict__.values():
+            output = output+data.encode()
+        return output
 
 
 @dataclass

@@ -23,6 +23,10 @@ class TransportHandler(object):
         packet, self.buffer = Packet.decode(data)
         return packet
 
+    def send_packet(self, packet: Packet):
+        print(packet.encode())
+        self.client.send(packet.encode())
+
     def exchange_protocols(self):
         # TODO: Send server acceptable protocols
         self.client_protocols = self.client.recv(2048)
